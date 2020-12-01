@@ -1,0 +1,39 @@
+name: ci
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2.1.2
+        with:
+          node-version: 14.15.0
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+      - name: Add problem matcher
+        run: echo "::add-matcher::.github/xo-problem-matcher.json"
+      - name: Pull dependencies
+        run: |
+          npm ci
+          npm run build
+          npm run lint
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dorny/paths-filter@v2.6.0
+        id: filter
+        with:
+          filters: |
+            build:
+              - 'Dockerfile'
+              - 'package*.json'
+      - name: Build image
+        if: steps.filter.outputs.build == 'true'
+        run: docker build .
